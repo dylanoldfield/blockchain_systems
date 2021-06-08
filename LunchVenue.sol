@@ -31,7 +31,8 @@
     }
  
     /// @notice Add a new lunch venue
-    /// @dev To simplify the code duplication of venues is not checked /// @param name Name of the venue
+    /// @dev To simplify the code duplication of venues is not checked 
+    /// @param name Name of the venue
     /// @return Number of lunch venues added so far
     function addVenue(string memory name) public restricted returns (uint){
         numVenues ++; 
@@ -40,7 +41,8 @@
     }
     
     /// @notice Add a new friend who can vote on lunch venue
-    /// @dev To simplify the code duplication of friends is not checked /// @param friendAddress Friend’s account address
+    /// @dev To simplify the code duplication of friends is not checked 
+    /// @param friendAddress Friend’s account address
     /// @param name Friend’s name
     /// @return Number of friends added so far
     function addFriend(address friendAddress, string memory name) public restricted returns (uint){
