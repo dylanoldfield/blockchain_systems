@@ -36,8 +36,11 @@ contract LunchVenueTest is LunchVenue {
         Assert.equal(addVenue('Uni Cafe'), 2, 'Should be equal to 2');
     }
     /// Try to add lunch venue as a user other than manager. This should fail 
-    /// #sender: account -1
+    
+    /// #sender: account-1
     function setLunchVenueFailure() public {
+ 
+        // check if caller is custom and is as expected
         try this.addVenue('Atomic Cafe') returns (uint v) {
             Assert.ok(false, 'Method execution should fail'); 
         } 
@@ -49,7 +52,7 @@ contract LunchVenueTest is LunchVenue {
             Assert.ok(false, 'Failed unexpected'); 
         }
     }
-    /// Set friends as account -0
+    /// Set friends as account-0
     /// #sender doesn't need to be specified explicitly for account-0
     function setFriend() public {
         Assert.equal(addFriend(acc0, 'Alice'), 1, 'Should be equal to 1');
@@ -58,37 +61,39 @@ contract LunchVenueTest is LunchVenue {
         Assert.equal(addFriend(acc3, 'Eve'), 4, 'Should be equal to 4');
     }
     /// Try adding friend as a user other than manager. This should fail 
-    /// #sender: account -2
     function setFriendFailure() public {
-        try this.addFriend(acc4, 'Daniels') returns (uint f) { Assert.ok(false, 'Method execution should fail');
+        try this.addFriend(acc4, 'Daniels') returns (uint f) { 
+            Assert.ok(false, 'Method execution should fail');
         } 
         catch Error(string memory reason) {
             // Compare failure reason, check if it is as expected
             Assert.equal(reason, 'Can only be executed by the manager', 'Failed with unexpected reason');
         } 
-        catch (bytes memory /*lowLevelData*/) { Assert.ok(false, 'Failed unexpected');
+        catch (bytes memory /*lowLevelData*/) { 
+            Assert.ok(false, 'Failed unexpected');
         } 
     }
     /// Vote as Bob (acc1)
-    /// #sender: account -1
+    /// #sender: account-1
     function vote() public {
         Assert.ok(doVote(2), "Voting result should be true");
     }
     /// Vote as Charlie 
-    /// #sender: account -2
+    /// #sender: account-2
     function vote2() public {
         Assert.ok(doVote(1), "Voting result should be true");
     }
     /// Try voting as a user not in the friends list. This should fail 
-    /// #sender: account -4
+    /// #sender: account-4
     function voteFailure() public {
         Assert.equal(doVote(1), false, "Voting result should be false");
     }
     /// Vote as Eve
-    /// #sender: account -3
+    /// #sender: account-3
     function vote3() public {
         Assert.ok(doVote(2), "Voting result should be true");
     }
+
     /// Verify lunch venue is set correctly
     function lunchVenueTest() public {
         Assert.equal(votedVenue, 'Uni Cafe', 'Selected venue should be Uni Cafe'); 
@@ -98,10 +103,10 @@ contract LunchVenueTest is LunchVenue {
         Assert.equal(voteOpen, false, 'Voting should be closed');
     }
     /// Verify voting after vote closed. This should fail 
-    /// #sender: account -2
+    /// #sender: account-2
     function voteAfterClosedFailure() public {
         try this.doVote(1) returns (bool validVote) {
-        Assert.ok(false, 'Method Execution Should Fail'); 
+            Assert.ok(false, 'Method Execution Should Fail'); 
         } 
         catch Error(string memory reason) {
             // Compare failure reason, check if it is as expected
