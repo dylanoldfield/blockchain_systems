@@ -16,6 +16,7 @@ contract LunchVenueTest is LunchVenue {
     address acc2; 
     address acc3;
     address acc4;
+    address acc5;
     
     /// 'beforeAll' runs before all other tests
     /// More special functions are: 'beforeEach', 'beforeAll', 'afterEach' & 'afterAll'
@@ -26,6 +27,7 @@ contract LunchVenueTest is LunchVenue {
         acc2 = TestsAccounts.getAccount(2);
         acc3 = TestsAccounts.getAccount(3);
         acc4 = TestsAccounts.getAccount(4);
+        acc5 = TestsAccounts.getAccount(5);
     }
     
     /// Account at zero index (account-0) is default account, so manager will be set to acc0
@@ -34,7 +36,7 @@ contract LunchVenueTest is LunchVenue {
     }
     
     /// Add lunch venue as manager
-    /// When msg.sender isn't specified , default account (i.e., account -0) is considered as the sender
+    /// When msg.sender isn't specified , default account (i.e., account-0) is considered as the sender
     function setLunchVenue() public {
         Assert.equal(addVenue('Courtyard Cafe'), 1, 'Should be equal to 1'); 
         Assert.equal(addVenue('Uni Cafe'), 2, 'Should be equal to 2');
@@ -53,18 +55,25 @@ contract LunchVenueTest is LunchVenue {
     }
     
     /// Set friends as account-0
-    /// #sender doesn't need to be specified explicitly for account-0
     function setFriend() public {
         Assert.equal(addFriend(acc0, 'Alice'), 1, 'Should be equal to 1');
         Assert.equal(addFriend(acc1, 'Bob'), 2, 'Should be equal to 2'); 
         Assert.equal(addFriend(acc2, 'Charlie'), 3, 'Should be equal to 3');
         Assert.equal(addFriend(acc3, 'Eve'), 4, 'Should be equal to 4');
+        Assert.equal(addFriend(address(this), 'Mr.Contract'), 5, 'Should be equal to 5');
     }
-    
-    /// Test if friend already added
+
+    /// Try adding a friend more than once
+    /// #sender: account-0
     function setFriendAlreadyExistFailure() public {
-        Assert.equal(addFriend(acc0, 'Alice'), 4, 'number of friends should not change');
-    }  
+        (bool success, bytes memory result) = address(this).delegatecall(abi.encodeWithSignature("addFriend(address,string)", acc0, 'Alice'));
+        if (success == false) {
+            string memory reason = abi.decode(result.slice(4, result.length - 4), (string));
+            Assert.equal(reason, 'friend already added.', 'Failed with unexpected reason');
+        }else {
+            Assert.ok(false, 'Method Execution should fail');
+        }
+    }
     
     /// Try adding friend as a user other than manager. This should fail 
     /// #sender: account-1
@@ -94,7 +103,12 @@ contract LunchVenueTest is LunchVenue {
     
     /// Open Voting
     function OpenVoting() public {
-        Assert.ok(openVoting(), "Voting is open");
+        Assert.ok(openVoting(), "Voting is not open");
+    }
+    
+    /// check if contract state is not cancelled 
+    function stateOpen() public {
+        Assert.equal(cancelled, false, "State: close/cancelled");
     }
 
     /// Vote as Bob (acc1)
@@ -103,37 +117,82 @@ contract LunchVenueTest is LunchVenue {
         Assert.ok(doVote(2), "Voting result should be true");
     }
     
-    /// Vote as Bob (acc1) AGAIN
-    /// #sender: account-1
-    function voteAgain() public {
-        Assert.equal(doVote(1), false, "Voting result should be false");
+    
+    ///@dev the next series of tests utilise the contract 'this' to enable the ability to use the try/catch statements correctly without delegatecall since it reverts for voting for some reason -> I assume to do with byte return size not large enough
+    ///Try to vote for venue that doesn't exist
+    function voteVenueNotExist() public {
+        try this.doVote(420) returns (bool f) { 
+            Assert.ok(false, 'Method execution should fail');
+        } 
+        catch Error(string memory reason) {
+            // Compare failure reason, check if it is as expected
+            Assert.equal(reason, 'venue does not exist.', 'Failed with unexpected reason');
+        } 
+        catch (bytes memory /*lowLevelData*/) { 
+            Assert.ok(false, 'Failed unexpected');
+        } 
     }
-    /// Vote as Charlie 
-    /// #sender: account-2
-    function vote2() public {
-        Assert.ok(doVote(1), "Voting result should be true");
+    
+    /// @dev delegate call fails when calling doVote but does not revert when using addVenue 
+    /// @dev due to the next 2 tests however, if this fails correctly we know it is because the account is not a friend 
+    /// Try to vote from friend not added
+    /// #sender: account-5
+    function voteFriendNotExist() public {
+        (bool success, bytes memory result) = address(this).delegatecall(abi.encodeWithSignature("doVote(uint)", 1));
+        Assert.equal(success, false, "this should fail");
     }
-    /// Try voting as a user not in the friends list. This should fail 
-    /// #sender: account-4
-    function voteFailure() public {
-        Assert.equal(doVote(1), false, "Voting result should be false");
+    
+    /// Vote as Contract address(this)
+    function voteAsContract() public {
+        Assert.ok(this.doVote(2), "Voting result should be true");
     }
-    /// Vote as Eve
-    /// #sender: account-3
-    function vote3() public {
-        Assert.ok(doVote(2), "Voting result should be true");
+    
+    /// Try to vote twice
+    function voteTwiceFailure() public {
+        try this.doVote(2) returns (bool f) { 
+            Assert.ok(false, 'Method execution should fail');
+        } 
+        catch Error(string memory reason) {
+            // Compare failure reason, check if it is as expected
+            Assert.equal(reason, 'friend has already voted.', 'Failed with unexpected reason');
+        } 
+        catch (bytes memory /*lowLevelData*/) { 
+            Assert.ok(false, 'Failed unexpected');
+        } 
     }
-
+    
+    /// Try to cancel with account other than Manager
+    function cancelContractFailure() public {
+        try this.managerCancel() returns (bool f) { 
+            Assert.ok(false, 'Method execution should fail');
+        } 
+        catch Error(string memory reason) {
+            // Compare failure reason, check if it is as expected
+            Assert.equal(reason, 'Can only be executed by the manager', 'Failed with unexpected reason');
+        } 
+        catch (bytes memory /*lowLevelData*/) { 
+            Assert.ok(false, 'Failed unexpected');
+        } 
+    }
+    
+    
+    /// Cancel Contract As Manager
+    /// #sender: account-0
+    function managerCancelled() public {
+        Assert.ok(managerCancel(), "contract should be cancelled");
+    }
+    
     /// Verify lunch venue is set correctly
     function lunchVenueTest() public {
         Assert.equal(votedVenue, 'Uni Cafe', 'Selected venue should be Uni Cafe'); 
     }
+    
     /// Verify voting is now closed
     function voteClosed() public {
         Assert.equal(voteOpen, false, 'Voting should be closed');
     }
+    
     /// Verify voting after vote closed. This should fail 
-    /// #sender: account-2
     function voteAfterClosedFailure() public {
         try this.doVote(1) returns (bool validVote) {
             Assert.ok(false, 'Method Execution Should Fail'); 
@@ -145,5 +204,11 @@ contract LunchVenueTest is LunchVenue {
         catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, 'Failed unexpectedly'); 
         }
-    } 
+    }
+    
+    /// check if cancels properly
+    function stateClosed() public {
+        Assert.equal(cancelled, true, "State: close/cancelled");
+    }
+    
 }
