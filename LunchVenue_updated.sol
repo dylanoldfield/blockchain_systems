@@ -75,6 +75,8 @@
     }
     
     
+    /// function to vote on venue 
+    /// @dev concious choice to not let manager vote by default unless they add themselves as a friend so it would be transparent that they voted
     /// @notice added if statement to check if the friend has already voted
     /// @dev added revert statements to optimise gas spending on failed txs
     function doVote(uint venue) public votingOpen notCancelled returns (bool validVote){ 
